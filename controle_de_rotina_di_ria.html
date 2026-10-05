@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Rotina & Tarefas</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+        
+        /* Custom Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header Navbar -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand & Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-200 dark:shadow-none flex items-center justify-center">
+                    <i data-lucide="check-square" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                        RotinaPro
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Controle de Rotina e Hábitos</p>
+                </div>
+            </div>
+
+            <!-- Date Selector Controls -->
+            <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl">
+                <button id="btn-prev-day" title="Dia Anterior" class="p-2 hover:bg-white dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-300 transition-all">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                <div class="relative flex items-center px-2">
+                    <input type="date" id="date-picker" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        <i data-lucide="calendar" class="w-4 h-4 text-indigo-500"></i>
+                        <span id="current-date-display">Hoje, 05 de Out</span>
+                    </div>
+                </div>
+                <button id="btn-next-day" title="Próximo Dia" class="p-2 hover:bg-white dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-300 transition-all">
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+                <button id="btn-today" class="px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition">
+                    Hoje
+                </button>
+            </div>
+
+            <!-- Header Right Actions -->
+            <div class="flex items-center gap-3">
+                <!-- Streak Badge -->
+                <div title="Sequência de dias cumpridos" class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-xl text-xs font-bold">
+                    <i data-lucide="flame" class="w-4 h-4 text-amber-500 fill-amber-500"></i>
+                    <span id="streak-count">0 dias</span>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="btn-theme-toggle" class="p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i data-lucide="sun" id="theme-icon-sun" class="w-5 h-5 hidden"></i>
+                    <i data-lucide="moon" id="theme-icon-moon" class="w-5 h-5"></i>
+                </button>
+
+                <!-- Data Backup Menu Button -->
+                <button id="btn-data-menu" title="Opções e Backup" class="p-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Tasks & Daily Schedule (8 cols on lg) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Daily Summary Banner -->
+            <div class="bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 relative z-10">
+                    <div>
+                        <h2 id="greeting-text" class="text-2xl font-bold">Tenha um ótimo dia!</h2>
+                        <p id="sub-greeting-text" class="text-indigo-100 text-sm mt-1">Sua rotina está pronta para ser executada.</p>
+                    </div>
+                    <!-- Circular / Bar Progress -->
+                    <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 flex flex-col items-center justify-center min-w-[140px]">
+                        <div class="text-xs font-medium text-indigo-200 uppercase tracking-wider mb-1">Progresso</div>
+                        <div id="progress-percentage-text" class="text-3xl font-extrabold">0%</div>
+                        <div class="text-xs text-indigo-100 mt-1" id="progress-count-text">0 de 0 tarefas</div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mt-5 bg-black/20 rounded-full h-2.5 overflow-hidden p-0.5 border border-white/10">
+                    <div id="progress-bar-fill" class="bg-emerald-400 h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Quick Habit Trackers Bar (Water, Mood, Energy) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Water Counter -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-500 rounded-xl">
+                            <i data-lucide="droplet" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Água Hoje</div>
+                            <div class="text-lg font-bold text-slate-800 dark:text-slate-100"><span id="water-count">0</span> / 2.0L</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button id="btn-water-minus" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 transition">-</button>
+                        <button id="btn-water-plus" class="w-8 h-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center font-bold transition">+</button>
+                    </div>
+                </div>
+
+                <!-- Mood Selector -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-500 rounded-xl">
+                            <i data-lucide="smile" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Humor do Dia</div>
+                            <div id="selected-mood-label" class="text-sm font-bold text-slate-800 dark:text-slate-100">Não definido</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-1" id="mood-buttons-container">
+                        <button data-mood="Excelente" title="Excelente" class="mood-btn text-lg p-1 hover:scale-125 transition">🤩</button>
+                        <button data-mood="Bom" title="Bom" class="mood-btn text-lg p-1 hover:scale-125 transition">😊</button>
+                        <button data-mood="Neutro" title="Neutro" class="mood-btn text-lg p-1 hover:scale-125 transition">😐</button>
+                        <button data-mood="Cansado" title="Cansado" class="mood-btn text-lg p-1 hover:scale-125 transition">😴</button>
+                    </div>
+                </div>
+
+                <!-- Quick Apply Routine Template -->
+                <button id="btn-import-template" class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-indigo-400 dark:hover:border-indigo-500 group text-left flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl group-hover:scale-110 transition">
+                            <i data-lucide="wand2" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Modelos de Rotina</div>
+                            <div class="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 transition">Carregar Hábitos</div>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition"></i>
+                </button>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex flex-col gap-4">
+                
+                <!-- Controls & Filters Bar -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                        <button data-filter="all" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition">
+                            Todas
+                        </button>
+                        <button data-filter="pending" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                            Pendentes
+                        </button>
+                        <button data-filter="completed" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                            Concluídas
+                        </button>
+                    </div>
+
+                    <button id="btn-add-task" class="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 dark:shadow-none transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Nova Tarefa</span>
+                    </button>
+                </div>
+
+                <!-- Tasks List Container -->
+                <div id="tasks-container" class="space-y-3 min-h-[220px]">
+                    <!-- Dynamic tasks will be rendered here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="tasks-empty-state" class="hidden flex-col items-center justify-center py-12 text-center">
+                    <div class="w-16 h-16 bg-indigo-50 dark:bg-slate-700 rounded-full flex items-center justify-center text-indigo-500 mb-3">
+                        <i data-lucide="sparkles" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-700 dark:text-slate-200">Nenhuma tarefa registrada para hoje</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
+                        Crie tarefas individuais ou carregue um modelo de rotina diária para começar o seu dia com foco.
+                    </p>
+                    <button id="btn-add-first-task" class="mt-4 px-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 rounded-xl transition">
+                        + Adicionar Primeira Tarefa
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Sidebar Widgets (4 cols on lg) -->
+        <aside class="lg:col-span-4 flex flex-col gap-6">
+
+            <!-- Focus Pomodoro Timer Widget -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="p-2 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                            <i data-lucide="timer" class="w-4 h-4"></i>
+                        </div>
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">Timer de Foco</h3>
+                    </div>
+                    <span id="timer-mode-label" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 rounded-md">
+                        Pomodoro
+                    </span>
+                </div>
+
+                <div class="text-center py-3">
+                    <div id="timer-display" class="text-4xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-100">
+                        25:00
+                    </div>
+                    <p id="timer-task-title" class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate px-2">
+                        Pronto para focar
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-center gap-2 mt-2">
+                    <button id="btn-timer-toggle" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition">
+                        <i data-lucide="play" id="timer-play-icon" class="w-4 h-4"></i>
+                        <span id="timer-btn-text">Iniciar</span>
+                    </button>
+                    <button id="btn-timer-reset" title="Reiniciar" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-timer-switch" title="Mudar Modo (25min / 5min)" class="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                        <i data-lucide="coffee" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mini Calendar Jump Widget -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i data-lucide="calendar-days" class="w-4 h-4 text-indigo-500"></i>
+                        <span>Calendário de Rotina</span>
+                    </h3>
+                    <span id="mini-month-year" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Outubros 2026</span>
+                </div>
+                <!-- Mini Calendar Grid -->
+                <div id="mini-calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs">
+                    <!-- Dynamic Mini Calendar Days -->
+                </div>
+            </div>
+
+            <!-- Daily Reflections / Notes Widget -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i data-lucide="notebook" class="w-4 h-4 text-indigo-500"></i>
+                        <span>Anotações & Diário</span>
+                    </h3>
+                    <span id="notes-saved-indicator" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold opacity-0 transition">
+                        Salvo!
+                    </span>
+                </div>
+                <textarea id="daily-notes-textarea" placeholder="Registre suas reflexões do dia, conquistas ou idéias para amanhã..." class="w-full h-32 p-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"></textarea>
+            </div>
+
+        </aside>
+    </main>
+
+    <!-- Task Modal (Add/Edit) -->
+    <div id="modal-task" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <h3 id="modal-task-title" class="font-bold text-slate-800 dark:text-slate-100 text-base">Nova Tarefa</h3>
+                <button id="btn-close-task-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="task-form" class="p-5 space-y-4">
+                <input type="hidden" id="task-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Título da Tarefa *</label>
+                    <input type="text" id="input-task-title" required placeholder="Ex: Meditação matinal, Reunião de equipe, Exercício" class="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Período / Horário</label>
+                        <select id="select-task-period" class="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                            <option value="Manhã">🌅 Manhã</option>
+                            <option value="Tarde">☀️ Tarde</option>
+                            <option value="Noite">🌙 Noite</option>
+                            <option value="Qualquer Horário">⚡ Qualquer Horário</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Horário Específico</label>
+                        <input type="time" id="input-task-time" class="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Categoria</label>
+                        <select id="select-task-category" class="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                            <option value="Saúde & Hábitos">🏃 Saúde & Hábitos</option>
+                            <option value="Trabalho">💼 Trabalho</option>
+                            <option value="Estudos">📚 Estudos</option>
+                            <option value="Pessoal">👤 Pessoal</option>
+                            <option value="Financeiro">💰 Financeiro</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Prioridade</label>
+                        <select id="select-task-priority" class="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100">
+                            <option value="Alta">🔴 Alta</option>
+                            <option value="Média" selected>🟡 Média</option>
+                            <option value="Baixa">🟢 Baixa</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Observações / Detalhes</label>
+                    <textarea id="input-task-desc" rows="2" placeholder="Notas adicionais sobre como executar..." class="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100 resize-none"></textarea>
+                </div>
+
+                <div class="pt-3 flex items-center justify-end gap-2">
+                    <button type="button" id="btn-cancel-task" class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-200 dark:shadow-none transition">
+                        Salvar Tarefa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Routine Template Manager Modal -->
+    <div id="modal-template" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">Modelos de Rotina Diária</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Importe hábitos predefinidos para o dia selecionado</p>
+                </div>
+                <button id="btn-close-template-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+                <!-- Preset Options -->
+                <div class="space-y-3">
+                    <div class="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20 flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-indigo-950 dark:text-indigo-200">Rotina Alta Performance (6 Tarefas)</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Inclui Meditação, Exercício, Leitura, Foco e Planejamento</p>
+                        </div>
+                        <button data-template-preset="high-performance" class="btn-apply-template px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition">
+                            Importar
+                        </button>
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-emerald-950 dark:text-emerald-200">Rotina de Bem-Estar & Saúde</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Foco em Alongamento, Hidratação, Caminhada e Sono Reparador</p>
+                        </div>
+                        <button data-template-preset="wellness" class="btn-apply-template px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition">
+                            Importar
+                        </button>
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-amber-100 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-amber-950 dark:text-amber-200">Rotina de Estudos & Foco</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Blocos de estudo concentrado, revisão e pausas ativas</p>
+                        </div>
+                        <button data-template-preset="study" class="btn-apply-template px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-xl hover:bg-amber-700 transition">
+                            Importar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Options & Backup Modal -->
+    <div id="modal-settings" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">Gerenciamento de Dados</h3>
+                <button id="btn-close-settings-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Seus dados de rotina são salvos automaticamente no seu navegador. Você pode fazer backup ou importar dados aqui.
+                </p>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button id="btn-export-data" class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Exportar Backup</span>
+                    </button>
+                    <label class="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold cursor-pointer transition">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>Importar Backup</span>
+                        <input type="file" id="input-import-file" accept=".json" class="hidden">
+                    </label>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <button id="btn-reset-data" class="w-full p-2.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <span>Limpar Todos os Dados</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Core Application State
+        const AppState = {
+            currentDateStr: getTodayString(), // YYYY-MM-DD
+            activeFilter: 'all',
+            darkMode: false,
+            timer: {
+                secondsLeft: 25 * 60,
+                totalSeconds: 25 * 60,
+                isRunning: false,
+                intervalId: null,
+                mode: 'pomodoro', // 'pomodoro' | 'break'
+                activeTaskTitle: ''
+            },
+            // Database schema in localStorage
+            db: {
+                days: {}, // key: "YYYY-MM-DD" -> { tasks: [], water: 0, mood: '', notes: '' }
+                streak: 0
+            }
+        };
+
+        // Date Helpers
+        function getTodayString() {
+            const today = new Date();
+            return formatDateToKey(today);
+        }
+
+        function formatDateToKey(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function parseKeyToDate(dateStr) {
+            const parts = dateStr.split('-');
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
+        function formatDisplayDate(dateStr) {
+            const dateObj = parseKeyToDate(dateStr);
+            const todayStr = getTodayString();
+            
+            const options = { day: '2-digit', month: 'short' };
+            const formatted = dateObj.toLocaleDateString('pt-BR', options);
+
+            if (dateStr === todayStr) {
+                return `Hoje, ${formatted}`;
+            }
+
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (dateStr === formatDateToKey(yesterday)) {
+                return `Ontem, ${formatted}`;
+            }
+
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            if (dateStr === formatDateToKey(tomorrow)) {
+                return `Amanhã, ${formatted}`;
+            }
+
+            const dayOfWeek = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' });
+            return `${dayOfWeek}, ${formatted}`;
+        }
+
+        // Storage Management
+        function loadStorage() {
+            try {
+                const saved = localStorage.getItem('rotina_pro_db_v1');
+                if (saved) {
+                    AppState.db = JSON.parse(saved);
+                } else {
+                    // Seed initial default tasks for today
+                    seedInitialData();
+                }
+
+                // Check Dark Mode preference
+                const savedTheme = localStorage.getItem('rotina_pro_theme');
+                if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    AppState.darkMode = true;
+                    document.documentElement.classList.add('dark');
+                } else {
+                    AppState.darkMode = false;
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {
+                console.error('Error loading storage', e);
+                seedInitialData();
+            }
+            updateThemeIcons();
+        }
+
+        function saveStorage() {
+            try {
+                localStorage.setItem('rotina_pro_db_v1', JSON.stringify(AppState.db));
+            } catch (e) {
+                console.error('Error saving storage', e);
+            }
+        }
+
+        function seedInitialData() {
+            const todayStr = getTodayString();
+            AppState.db.days[todayStr] = {
+                tasks: [
+                    {
+                        id: 'seed-1',
+                        title: 'Beber 500ml de água e alongar',
+                        period: 'Manhã',
+                        time: '07:00',
+                        category: 'Saúde & Hábitos',
+                        priority: 'Alta',
+                        desc: 'Ativar o metabolismo ao acordar.',
+                        completed: true
+                    },
+                    {
+                        id: 'seed-2',
+                        title: 'Planejar as prioridades do dia',
+                        period: 'Manhã',
+                        time: '08:30',
+                        category: 'Trabalho',
+                        priority: 'Média',
+                        desc: 'Definir 3 tarefas essenciais.',
+                        completed: false
+                    },
+                    {
+                        id: 'seed-3',
+                        title: 'Leitura de 15 páginas de um livro',
+                        period: 'Noite',
+                        time: '21:00',
+                        category: 'Estudos',
+                        priority: 'Média',
+                        desc: 'Manter hábito diário de leitura.',
+                        completed: false
+                    }
+                ],
+                water: 0.5,
+                mood: 'Bom',
+                notes: 'Dia focado no desenvolvimento do projeto principal.'
+            };
+            AppState.db.streak = 1;
+            saveStorage();
+        }
+
+        function getOrCreateDayData(dateStr) {
+            if (!AppState.db.days[dateStr]) {
+                AppState.db.days[dateStr] = {
+                    tasks: [],
+                    water: 0,
+                    mood: '',
+                    notes: ''
+                };
+            }
+            return AppState.db.days[dateStr];
+        }
+
+        // UI Render Functions
+        function renderAll() {
+            const dayData = getOrCreateDayData(AppState.currentDateStr);
+            
+            // Render Date Header
+            document.getElementById('current-date-display').textContent = formatDisplayDate(AppState.currentDateStr);
+            document.getElementById('date-picker').value = AppState.currentDateStr;
+
+            // Render Streak
+            calculateAndUpdateStreak();
+
+            // Render Water Counter
+            document.getElementById('water-count').textContent = (dayData.water || 0).toFixed(1);
+
+            // Render Mood
+            document.getElementById('selected-mood-label').textContent = dayData.mood || 'Não definido';
+            document.querySelectorAll('.mood-btn').forEach(btn => {
+                if (btn.dataset.mood === dayData.mood) {
+                    btn.classList.add('scale-125', 'bg-amber-100', 'dark:bg-amber-900/50', 'rounded-lg');
+                } else {
+                    btn.classList.remove('scale-125', 'bg-amber-100', 'dark:bg-amber-900/50', 'rounded-lg');
+                }
+            });
+
+            // Render Notes
+            document.getElementById('daily-notes-textarea').value = dayData.notes || '';
+
+            // Render Progress Bar & Greeting
+            renderProgress(dayData.tasks);
+
+            // Render Tasks
+            renderTasksList(dayData.tasks);
+
+            // Render Mini Calendar
+            renderMiniCalendar();
+
+            // Refresh Lucide Icons
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+
+        function renderProgress(tasks) {
+            const total = tasks.length;
+            const completedCount = tasks.filter(t => t.completed).length;
+            const percent = total === 0 ? 0 : Math.round((completedCount / total) * 100);
+
+            document.getElementById('progress-percentage-text').textContent = `${percent}%`;
+            document.getElementById('progress-count-text').textContent = `${completedCount} de ${total} tarefas`;
+            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+
+            const greetingEl = document.getElementById('greeting-text');
+            const subGreetingEl = document.subGreetingEl || document.getElementById('sub-greeting-text');
+
+            if (percent === 100 && total > 0) {
+                greetingEl.textContent = '🎉 Sensacional! Rotina Concluída!';
+                subGreetingEl.textContent = 'Você cumpriu todas as tarefas de hoje com maestria.';
+            } else if (percent >= 50) {
+                greetingEl.textContent = '⚡ Excelente ritmo!';
+                subGreetingEl.textContent = 'Mais da metade das suas tarefas já foram executadas.';
+            } else {
+                greetingEl.textContent = 'Foco no progresso!';
+                subGreetingEl.textContent = 'Dê um passo de cada vez para conquistar o seu dia.';
+            }
+        }
+
+        function renderTasksList(tasks) {
+            const container = document.getElementById('tasks-container');
+            const emptyState = document.getElementById('tasks-empty-state');
+            container.innerHTML = '';
+
+            let filteredTasks = tasks.filter(task => {
+                if (AppState.activeFilter === 'pending') return !task.completed;
+                if (AppState.activeFilter === 'completed') return task.completed;
+                return true;
+            });
+
+            if (filteredTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+
+                // Sort tasks: Non-completed first, then by priority/time
+                filteredTasks.sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    return (a.time || '23:59').localeCompare(b.time || '23:59');
+                });
+
+                filteredTasks.forEach(task => {
+                    const card = createTaskCardElement(task);
+                    container.appendChild(card);
+                });
+            }
+        }
+
+        function createTaskCardElement(task) {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                task.completed 
+                    ? 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 opacity-75' 
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600'
+            }`;
+
+            const priorityColors = {
+                'Alta': 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+                'Média': 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+                'Baixa': 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+            };
+
+            const priorityBadge = `<span class="text-[10px] px-2 py-0.5 rounded-full font-bold border ${priorityColors[task.priority] || priorityColors['Média']}">${task.priority}</span>`;
+
+            card.innerHTML = `
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                    <button class="btn-toggle-task mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition ${
+                        task.completed 
+                            ? 'bg-emerald-500 border-emerald-500 text-white' 
+                            : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400'
+                    }" data-id="${task.id}">
+                        ${task.completed ? '<i data-lucide="check" class="w-4 h-4 stroke-[3]"></i>' : ''}
+                    </button>
+                    
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h4 class="text-sm font-bold ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}">
+                                ${escapeHtml(task.title)}
+                            </h4>
+                            ${priorityBadge}
+                        </div>
+                        
+                        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                            ${task.time ? `<span class="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400"><i data-lucide="clock" class="w-3.5 h-3.5"></i>${task.time}</span>` : ''}
+                            <span class="flex items-center gap-1"><i data-lucide="tag" class="w-3.5 h-3.5"></i>${escapeHtml(task.category)}</span>
+                            <span class="flex items-center gap-1"><i data-lucide="sun-medium" class="w-3.5 h-3.5"></i>${escapeHtml(task.period)}</span>
+                        </div>
+
+                        ${task.desc ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">${escapeHtml(task.desc)}</p>` : ''}
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1 sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-slate-700/60 justify-end">
+                    <button class="btn-start-focus-task p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition" title="Focar nesta tarefa" data-title="${escapeHtml(task.title)}">
+                        <i data-lucide="timer" class="w-4 h-4"></i>
+                    </button>
+                    <button class="btn-edit-task p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition" title="Editar" data-id="${task.id}">
+                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                    </button>
+                    <button class="btn-delete-task p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition" title="Excluir" data-id="${task.id}">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+
+            // Card Event Listeners
+            card.querySelector('.btn-toggle-task').addEventListener('click', () => toggleTaskCompletion(task.id));
+            card.querySelector('.btn-edit-task').addEventListener('click', () => openEditTaskModal(task.id));
+            card.querySelector('.btn-delete-task').addEventListener('click', () => deleteTask(task.id));
+            card.querySelector('.btn-start-focus-task').addEventListener('click', () => startFocusForTask(task.title));
+
+            return card;
+        }
+
+        function renderMiniCalendar() {
+            const grid = document.getElementById('mini-calendar-grid');
+            grid.innerHTML = '';
+
+            const currentDateObj = parseKeyToDate(AppState.currentDateStr);
+            const year = currentDateObj.getFullYear();
+            const month = currentDateObj.getMonth();
+
+            document.getElementById('mini-month-year').textContent = currentDateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+            const daysOfWeek = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+            daysOfWeek.forEach(d => {
+                const head = document.createElement('div');
+                head.className = 'font-bold text-slate-400 dark:text-slate-500 py-1';
+                head.textContent = d;
+                grid.appendChild(head);
+            });
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Blank spaces before first day
+            for (let i = 0; i < firstDayIndex; i++) {
+                const empty = document.createElement('div');
+                grid.appendChild(empty);
+            }
+
+            const todayStr = getTodayString();
+
+            for (let day = 1; day <= totalDaysInMonth; day++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const btn = document.createElement('button');
+                btn.className = 'p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition flex flex-col items-center justify-center relative font-medium';
+                btn.textContent = day;
+
+                const dayData = AppState.db.days[dateKey];
+                let hasTasks = dayData && dayData.tasks && dayData.tasks.length > 0;
+                let isFullyDone = hasTasks && dayData.tasks.every(t => t.completed);
+
+                if (dateKey === AppState.currentDateStr) {
+                    btn.classList.add('bg-indigo-600', 'text-white', 'font-bold', 'hover:bg-indigo-700');
+                } else if (dateKey === todayStr) {
+                    btn.classList.add('border', 'border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                }
+
+                if (hasTasks && dateKey !== AppState.currentDateStr) {
+                    const dot = document.createElement('span');
+                    dot.className = `w-1.5 h-1.5 rounded-full absolute bottom-0.5 ${isFullyDone ? 'bg-emerald-500' : 'bg-amber-500'}`;
+                    btn.appendChild(dot);
+                }
+
+                btn.addEventListener('click', () => {
+                    AppState.currentDateStr = dateKey;
+                    renderAll();
+                });
+
+                grid.appendChild(btn);
+            }
+        }
+
+        // Action Handlers
+        function toggleTaskCompletion(id) {
+            const dayData = getOrCreateDayData(AppState.currentDateStr);
+            const task = dayData.tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveStorage();
+                renderAll();
+
+                // Check if all completed -> Trigger Confetti!
+                const allCompleted = dayData.tasks.length > 0 && dayData.tasks.every(t => t.completed);
+                if (allCompleted && task.completed) {
+                    triggerConfetti();
+                    showToast('🎉 Parabéns! Todas as tarefas do dia foram cumpridas!', 'success');
+                }
+            }
+        }
+
+        function deleteTask(id) {
+            const dayData = getOrCreateDayData(AppState.currentDateStr);
+            dayData.tasks = dayData.tasks.filter(t => t.id !== id);
+            saveStorage();
+            renderAll();
+            showToast('Tarefa removida com sucesso.', 'info');
+        }
+
+        function openAddTaskModal() {
+            document.getElementById('modal-task-title').textContent = 'Nova Tarefa';
+            document.getElementById('task-id').value = '';
+            document.getElementById('input-task-title').value = '';
+            document.getElementById('input-task-time').value = '';
+            document.getElementById('input-task-desc').value = '';
+            document.getElementById('select-task-period').value = 'Manhã';
+            document.getElementById('select-task-category').value = 'Saúde & Hábitos';
+            document.getElementById('select-task-priority').value = 'Média';
+
+            document.getElementById('modal-task').classList.remove('hidden');
+            document.getElementById('modal-task').classList.add('flex');
+            document.getElementById('input-task-title').focus();
+        }
+
+        function openEditTaskModal(id) {
+            const dayData = getOrCreateDayData(AppState.currentDateStr);
+            const task = dayData.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            document.getElementById('modal-task-title').textContent = 'Editar Tarefa';
+            document.getElementById('task-id').value = task.id;
+            document.getElementById('input-task-title').value = task.title;
+            document.getElementById('input-task-time').value = task.time || '';
+            document.getElementById('input-task-desc').value = task.desc || '';
+            document.getElementById('select-task-period').value = task.period || 'Manhã';
+            document.getElementById('select-task-category').value = task.category || 'Saúde & Hábitos';
+            document.getElementById('select-task-priority').value = task.priority || 'Média';
+
+            document.getElementById('modal-task').classList.remove('hidden');
+            document.getElementById('modal-task').classList.add('flex');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('modal-task').classList.add('hidden');
+            document.getElementById('modal-task').classList.remove('flex');
+        }
+
+        function saveTaskFromForm(e) {
+            e.preventDefault();
+            const id = document.getElementById('task-id').value;
+            const title = document.getElementById('input-task-title').value.trim();
+            const period = document.getElementById('select-task-period').value;
+            const time = document.getElementById('input-task-time').value;
+            const category = document.getElementById('select-task-category').value;
+            const priority = document.getElementById('select-task-priority').value;
+            const desc = document.getElementById('input-task-desc').value.trim();
+
+            if (!title) return;
+
+            const dayData = getOrCreateDayData(AppState.currentDateStr);
+
+            if (id) {
+                // Edit existing
+                const task = dayData.tasks.find(t => t.id === id);
+                if (task) {
+                    task.title = title;
+                    task.period = period;
+                    task.time = time;
+                    task.category = category;
+                    task.priority = priority;
+                    task.desc = desc;
+                }
+            } else {
+                // Create new
+                dayData.tasks.push({
+                    id: 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    title,
+                    period,
+                    time,
+                    category,
+                    priority,
+                    desc,
+                    completed: false
+                });
+            }
+
+            saveStorage();
+            closeTaskModal();
+            renderAll();
+            showToast(id ? 'Tarefa atualizada!' : 'Tarefa criada com sucesso!', 'success');
+        }
+
+        function applyRoutineTemplate(presetKey) {
+            const templates = {
+                'high-performance': [
+                    { title: '🧘 Meditação & Respiração Guiada', period: 'Manhã', time: '06:30', category: 'Saúde & Hábitos', priority: 'Média', desc: '10 minutos para clareza mental.' },
+                    { title: '🏃 Exercício Físico (Treino / Caminhada)', period: 'Manhã', time: '07:00', category: 'Saúde & Hábitos', priority: 'Alta', desc: 'Atividade aeróbica ou musculação.' },
+                    { title: '🎯 Bloco de Foco Profundo (Deep Work)', period: 'Manhã', time: '09:00', category: 'Trabalho', priority: 'Alta', desc: 'Trabalhar sem distrações nas tarefas prioritárias.' },
+                    { title: '🥗 Alimentação Saudável e Pausa', period: 'Tarde', time: '12:30', category: 'Saúde & Hábitos', priority: 'Média', desc: 'Almoço nutritivo longe das telas.' },
+                    { title: '📚 Leitura / Estudo Contínuo', period: 'Noite', time: '20:30', category: 'Estudos', priority: 'Média', desc: 'Ler capítulo de livro ou curso.' },
+                    { title: '🔌 Desconectar das Telas (Higiene do Sono)', period: 'Noite', time: '22:00', category: 'Saúde & Hábitos', priority: 'Alta', desc: 'Preparar ambiente para dormir bem.' }
+                ],
+                'wellness': [
+                    { title: '💧 Beber 2 copos de água ao acordar', period: 'Manhã', time: '07:00', category: 'Saúde & Hábitos', priority: 'Alta', desc: 'Reidratação matinal.' },
+                    { title: '🧘 Alongamento Leve', period: 'Manhã', time: '07:15', category: 'Saúde & Hábitos', priority: 'Média', desc: 'Soltar os músculos e melhorar a postura.' },
+                    { title: '🚶 Caminhada ao ar livre / Banho de sol', period: 'Tarde', time: '17:00', category: 'Saúde & Hábitos', priority: 'Média', desc: '20 a 30 minutos de caminhada.' },
+                    { title: '🍵 Chá relaxante & Leitura suave', period: 'Noite', time: '21:30', category: 'Pessoal', priority: 'Baixa', desc: 'Desacelerar para a noite.' }
+                ],
+                'study': [
+                    { title: '📋 Definir metas de estudo do dia', period: 'Manhã', time: '08:30', category: 'Estudos', priority: 'Alta', desc: 'Anotar conteúdos a serem revisados.' },
+                    { title: '📖 Bloco de Estudos 1 (Pomodoro)', period: 'Manhã', time: '09:00', category: 'Estudos', priority: 'Alta', desc: 'Foco total com pausas curtas.' },
+                    { title: '📝 Resumo e Resolução de Exercícios', period: 'Tarde', time: '14:00', category: 'Estudos', priority: 'Média', desc: 'Prática ativa dos temas lidos.' },
+                    { title: '🔄 Revisão Espaçada dos Conteúdos', period: 'Tarde', time: '16:30', category: 'Estudos', priority: 'Média', desc: 'Revisar anotações da semana.' }
+                ]
+            };
+
+            const selected = templates[presetKey];
+            if (!selected) return;
+
+            const dayData = getOrCreateDayData(AppState.currentDateStr);
+            
+            selected.forEach(item => {
+                dayData.tasks.push({
+                    id: 'tpl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    title: item.title,
+                    period: item.period,
+                    time: item.time,
+                    category: item.category,
+                    priority: item.priority,
+                    desc: item.desc,
+                    completed: false
+                });
+            });
+
+            saveStorage();
+            closeTemplateModal();
+            renderAll();
+            showToast('Modelo de rotina importado com sucesso!', 'success');
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('modal-template').classList.add('hidden');
+            document.getElementById('modal-template').classList.remove('flex');
+        }
+
+        // Pomodoro / Focus Timer Functions
+        function startFocusForTask(title) {
+            AppState.timer.activeTaskTitle = title;
+            document.getElementById('timer-task-title').textContent = title;
+            startTimer();
+            showToast(`Timer iniciado para: ${title}`, 'info');
+        }
+
+        function startTimer() {
+            if (AppState.timer.isRunning) return;
+            AppState.timer.isRunning = true;
+            document.getElementById('timer-btn-text').textContent = 'Pausar';
+            document.getElementById('timer-play-icon').setAttribute('data-lucide', 'pause');
+            if (window.lucide) lucide.createIcons();
+
+            AppState.timer.intervalId = setInterval(() => {
+                AppState.timer.secondsLeft--;
+                updateTimerDisplay();
+
+                if (AppState.timer.secondsLeft <= 0) {
+                    clearInterval(AppState.timer.intervalId);
+                    AppState.timer.isRunning = false;
+                    document.getElementById('timer-btn-text').textContent = 'Iniciar';
+                    document.getElementById('timer-play-icon').setAttribute('data-lucide', 'play');
+                    if (window.lucide) lucide.createIcons();
+
+                    showToast('⏰ Tempo de Foco Encerrado! Faça uma pausa.', 'success');
+                    triggerConfetti();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (!AppState.timer.isRunning) return;
+            clearInterval(AppState.timer.intervalId);
+            AppState.timer.isRunning = false;
+            document.getElementById('timer-btn-text').textContent = 'Continuar';
+            document.getElementById('timer-play-icon').setAttribute('data-lucide', 'play');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            AppState.timer.secondsLeft = AppState.timer.mode === 'pomodoro' ? 25 * 60 : 5 * 60;
+            updateTimerDisplay();
+            document.getElementById('timer-btn-text').textContent = 'Iniciar';
+        }
+
+        function toggleTimerMode() {
+            pauseTimer();
+            if (AppState.timer.mode === 'pomodoro') {
+                AppState.timer.mode = 'break';
+                AppState.timer.secondsLeft = 5 * 60;
+                AppState.timer.totalSeconds = 5 * 60;
+                document.getElementById('timer-mode-label').textContent = 'Pausa Curta';
+            } else {
+                AppState.timer.mode = 'pomodoro';
+                AppState.timer.secondsLeft = 25 * 60;
+                AppState.timer.totalSeconds = 25 * 60;
+                document.getElementById('timer-mode-label').textContent = 'Pomodoro';
+            }
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(AppState.timer.secondsLeft / 60);
+            const s = AppState.timer.secondsLeft % 60;
+            document.getElementById('timer-display').textContent = 
+                `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        // Streak Calculator
+        function calculateAndUpdateStreak() {
+            // Count consecutive days with completed tasks leading up to today or yesterday
+            let streak = 0;
+            let checkDate = new Date();
+
+            for (let i = 0; i < 365; i++) {
+                const dateKey = formatDateToKey(checkDate);
+                const dayData = AppState.db.days[dateKey];
+
+                if (dayData && dayData.tasks.length > 0 && dayData.tasks.every(t => t.completed)) {
+                    streak++;
+                } else if (i === 0) {
+                    // If today is not completed yet, check yesterday to keep streak alive
+                    checkDate.setDate(checkDate.getDate() - 1);
+                    continue;
+                } else {
+                    break;
+                }
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+
+            AppState.db.streak = streak;
+            document.getElementById('streak-count').textContent = `${streak} ${streak === 1 ? 'dia' : 'dias'}`;
+        }
+
+        // Helper UI Functions
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: 'bg-emerald-600 text-white',
+                info: 'bg-indigo-600 text-white',
+                error: 'bg-rose-600 text-white'
+            };
+
+            toast.className = `px-4 py-3 rounded-xl shadow-lg font-medium text-xs flex items-center gap-2 pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300 ${bgColors[type] || bgColors.info}`;
+            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function updateThemeIcons() {
+            const sun = document.getElementById('theme-icon-sun');
+            const moon = document.getElementById('theme-icon-moon');
+            if (AppState.darkMode) {
+                sun.classList.remove('hidden');
+                moon.classList.add('hidden');
+            } else {
+                sun.classList.add('hidden');
+                moon.classList.remove('hidden');
+            }
+        }
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            // Theme Toggle
+            document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+                AppState.darkMode = !AppState.darkMode;
+                if (AppState.darkMode) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('rotina_pro_theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('rotina_pro_theme', 'light');
+                }
+                updateThemeIcons();
+            });
+
+            // Date Picker & Buttons
+            document.getElementById('date-picker').addEventListener('change', (e) => {
+                if (e.target.value) {
+                    AppState.currentDateStr = e.target.value;
+                    renderAll();
+                }
+            });
+
+            document.getElementById('btn-today').addEventListener('click', () => {
+                AppState.currentDateStr = getTodayString();
+                renderAll();
+            });
+
+            document.getElementById('btn-prev-day').addEventListener('click', () => {
+                const current = parseKeyToDate(AppState.currentDateStr);
+                current.setDate(current.getDate() - 1);
+                AppState.currentDateStr = formatDateToKey(current);
+                renderAll();
+            });
+
+            document.getElementById('btn-next-day').addEventListener('click', () => {
+                const current = parseKeyToDate(AppState.currentDateStr);
+                current.setDate(current.getDate() + 1);
+                AppState.currentDateStr = formatDateToKey(current);
+                renderAll();
+            });
+
+            // Water Tracker Buttons
+            document.getElementById('btn-water-plus').addEventListener('click', () => {
+                const dayData = getOrCreateDayData(AppState.currentDateStr);
+                dayData.water = Number(((dayData.water || 0) + 0.25).toFixed(2));
+                saveStorage();
+                renderAll();
+            });
+
+            document.getElementById('btn-water-minus').addEventListener('click', () => {
+                const dayData = getOrCreateDayData(AppState.currentDateStr);
+                dayData.water = Math.max(0, Number(((dayData.water || 0) - 0.25).toFixed(2)));
+                saveStorage();
+                renderAll();
+            });
+
+            // Mood Buttons
+            document.querySelectorAll('.mood-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const dayData = getOrCreateDayData(AppState.currentDateStr);
+                    dayData.mood = btn.dataset.mood;
+                    saveStorage();
+                    renderAll();
+                });
+            });
+
+            // Notes Textarea auto-save
+            let notesTimeout;
+            document.getElementById('daily-notes-textarea').addEventListener('input', (e) => {
+                const dayData = getOrCreateDayData(AppState.currentDateStr);
+                dayData.notes = e.target.value;
+                saveStorage();
+
+                const indicator = document.getElementById('notes-saved-indicator');
+                indicator.classList.remove('opacity-0');
+                clearTimeout(notesTimeout);
+                notesTimeout = setTimeout(() => {
+                    indicator.classList.add('opacity-0');
+                }, 1500);
+            });
+
+            // Filter Tabs
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-tab').forEach(t => {
+                        t.classList.remove('bg-indigo-50', 'dark:bg-indigo-950', 'text-indigo-600', 'dark:text-indigo-300', 'border', 'border-indigo-200', 'dark:border-indigo-800');
+                        t.classList.add('text-slate-600', 'dark:text-slate-400');
+                    });
+
+                    tab.classList.add('bg-indigo-50', 'dark:bg-indigo-950', 'text-indigo-600', 'dark:text-indigo-300', 'border', 'border-indigo-200', 'dark:border-indigo-800');
+                    tab.classList.remove('text-slate-600', 'dark:text-slate-400');
+
+                    AppState.activeFilter = tab.dataset.filter;
+                    renderAll();
+                });
+            });
+
+            // Add Task Buttons & Form
+            document.getElementById('btn-add-task').addEventListener('click', openAddTaskModal);
+            document.getElementById('btn-add-first-task').addEventListener('click', openAddTaskModal);
+            document.getElementById('btn-close-task-modal').addEventListener('click', closeTaskModal);
+            document.getElementById('btn-cancel-task').addEventListener('click', closeTaskModal);
+            document.getElementById('task-form').addEventListener('submit', saveTaskFromForm);
+
+            // Routine Template Modal
+            document.getElementById('btn-import-template').addEventListener('click', () => {
+                document.getElementById('modal-template').classList.remove('hidden');
+                document.getElementById('modal-template').classList.add('flex');
+            });
+            document.getElementById('btn-close-template-modal').addEventListener('click', closeTemplateModal);
+
+            document.querySelectorAll('.btn-apply-template').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    applyRoutineTemplate(btn.dataset.templatePreset);
+                });
+            });
+
+            // Timer Buttons
+            document.getElementById('btn-timer-toggle').addEventListener('click', () => {
+                if (AppState.timer.isRunning) {
+                    pauseTimer();
+                } else {
+                    startTimer();
+                }
+            });
+            document.getElementById('btn-timer-reset').addEventListener('click', resetTimer);
+            document.getElementById('btn-timer-switch').addEventListener('click', toggleTimerMode);
+
+            // Data Menu Modal
+            document.getElementById('btn-data-menu').addEventListener('click', () => {
+                document.getElementById('modal-settings').classList.remove('hidden');
+                document.getElementById('modal-settings').classList.add('flex');
+            });
+            document.getElementById('btn-close-settings-modal').addEventListener('click', () => {
+                document.getElementById('modal-settings').classList.add('hidden');
+                document.getElementById('modal-settings').classList.remove('flex');
+            });
+
+            // Export & Import Data
+            document.getElementById('btn-export-data').addEventListener('click', () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AppState.db, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `rotina_pro_backup_${getTodayString()}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+                showToast('Backup exportado com sucesso!', 'success');
+            });
+
+            document.getElementById('input-import-file').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        if (parsed && parsed.days) {
+                            AppState.db = parsed;
+                            saveStorage();
+                            renderAll();
+                            document.getElementById('modal-settings').classList.add('hidden');
+                            showToast('Dados importados com sucesso!', 'success');
+                        } else {
+                            showToast('Arquivo JSON de backup inválido.', 'error');
+                        }
+                    } catch (err) {
+                        showToast('Erro ao ler arquivo de backup.', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            // Reset Data
+            document.getElementById('btn-reset-data').addEventListener('click', () => {
+                if (window.confirm ? true : true) {
+                    AppState.db = { days: {}, streak: 0 };
+                    seedInitialData();
+                    renderAll();
+                    document.getElementById('modal-settings').classList.add('hidden');
+                    showToast('Dados redefinidos para a rotina padrão.', 'info');
+                }
+            });
+        }
+
+        // Window Initialization
+        window.onload = function() {
+            loadStorage();
+            setupEventListeners();
+            renderAll();
+        };
+    </script>
+</body>
+</html>
